@@ -1,18 +1,25 @@
 
 -module(receiver).
 -compile(export_all).
--record(state,{socket,coordinator}).
+-record(state,{socket,coordinator,lastFrame}).
 
 init(Coordinator,Port)->
     {ok,Socket}=gen_udp:open(Port),
-    loop(#state{socket=Socket,coordinator=Coordinator}).
+	CurrentFrame=get_current_frame(),
+    loop(#state{socket=Socket,coordinator=Coordinator,lastFrame=CurrentFrame}).
 
-loop(#state{socket=Socket,coordinator=Coordinator})->
+loop(State=#state{socket=Socket,coordinator=Coordinator,lastFrame=LastFrame})->
     receive
 	{udp, Socket, _IP, _InPortNo, Packet} -> 
+		CurrentFrame=get_current_frame(),
+		if CurrentFrameSec > LastFrame ->
+				Coordinator ! reset_slot_wishes;
+			true -> ok
+		end,
 	    Time=get_timestamp(),
 	    Slot=get_slot_for_msec(Time),
-	    Coordinator ! {Slot,Time,Packet};
+	    Coordinator ! {received,Slot,Time,Packet},
+		loop(State#state{lastFrame=CurrentFrame);
 	kill -> 
 	    io:format("Received kill command"),
 	    gen_udp:close(Socket),
@@ -28,3 +35,7 @@ get_timestamp() ->
 
 get_slot_for_msec(Time)->
     erlang:trunc(((Time rem 1000)/50)).
+
+get_current_frame()->
+	{_,CurrentFrame,_}=erlang:now(),
+	CurrentFrame.
