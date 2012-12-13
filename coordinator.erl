@@ -9,11 +9,14 @@ init(TeamNo,StationNo,MulticastIp)->
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,Socket) end),
     Sender=spawn(fun()->sender:init(Coordinator,Socket,MulticastIp) end),
+	timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
+	timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
     loop(#state{teamNo=TeamNo,stationNo=StationNo,socket=Socket,currentSlot=(random:uniform(20)-1),receiver=Receiver,sender=Sender,slotWishes=dict:new()}).
 
 loop(State=#state{slotWishes = SlotWishes, stationNo = StationNo, sender = Sender,receiver=Receiver})->
     receive
 		reset_slot_wishes ->
+			timer:send_after(1000,self(),reset_slot_wishes), %% reset slot wishes every second/frame
 			Slot = calculate_slot_from_slotwishes(StationNo, SlotWishes),
 			Sender ! {slot, Slot},
 			loop(State#state{slotWishes=dict:new()});
@@ -30,23 +33,15 @@ loop(State=#state{slotWishes = SlotWishes, stationNo = StationNo, sender = Sende
     end.
 
 update_slot_wishes(Packet,SlotWishes)->
-    {Station,Slot,_,_} = match_message(Packet),
+    {Station,Slot,_,_} = utilities:match_message(Packet),
+	%% Appends the Clients to each SlotWish, so we can choose free slots afterwards
     NewSlotWishes=dict:append(Slot,Station,SlotWishes).
     
     
-match_message(_Packet= <<_Rest:8/binary,StationBin:2/binary,NutzdatenBin:14/binary,SlotBin:8/integer,TimestampBin/integer>>)	->
-	%% TODO MATCHING
-	Station=list_to_integer(binary_to_list(StationBin)),
-    Slot=SlotBin,
-	Timestamp=TimestampBin,
-	Nutzdaten= binary_to_list(NutzdatenBin),
-	{Station,Slot,Nutzdaten,Timestamp}.
+
 
 			   
 calculate_slot_from_slotwishes(StationNo, SlotWishes) ->
-	%%TODO CRAZY SCHEISS
+	%% Todo CrazyScheiss, Ignore when several wishes for the same slot
+	%% Choose free slots or slots with conflict then get a random one.
 	1.
-	
-	
-
-

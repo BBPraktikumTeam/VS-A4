@@ -4,16 +4,16 @@
 
 start()->
 	Self=self(),
+	%% register only for testing!
 	register(dataqueue,Self),
-	spawn(fun()->read(Self,0) end),
+	spawn(fun()->read(Self) end),
 	loop(#state{queue=queue:new()}).
 
-read(Pid,N)->
-	io:format("~p",["Hallo"]),
+read(Pid)->
 	Input=io:get_chars("",24),
-	io:format("~p: ~s~n",[N,Input]),
+	%% io:format("~p: ~s~n",[N,Input]),
 	Pid ! {input,Input},
-	read(Pid,N+1).
+	read(Pid).
 
 loop(State=#state{queue=Queue})->
 	receive
@@ -25,3 +25,5 @@ loop(State=#state{queue=Queue})->
 			 Pid ! {send_data,Item},
 			 loop(State#state{queue=NewQueue})
 	end.
+
+	
