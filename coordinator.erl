@@ -61,6 +61,6 @@ update_slot_wishes(Packet,SlotWishes)->
 
 
 			   
-calculate_slot_from_slotwishes(StationNo, SlotWishes) ->
+calculate_slot_from_slotwishes(SlotWishes) ->
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(SlotWishes)),
 	lists:nth(random:uniform(length(FreeSlots)), FreeSlots).
