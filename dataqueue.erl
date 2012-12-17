@@ -22,7 +22,7 @@ loop(State=#state{queue=Queue})->
 			      loop(State#state{queue=NewQueue});
 		{get_data,Pid} -> 
 			 {Item,NewQueue}=queue:out(Queue),
-			 Pid ! {send_data,Item},
+			 Pid ! {input,Item},
 			 loop(State#state{queue=NewQueue})
 	end.
 
