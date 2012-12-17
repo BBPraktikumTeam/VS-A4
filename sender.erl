@@ -15,8 +15,8 @@ loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, lastSlot = 
 		{slot, NextSlot} ->
 			Dataqueue ! {get_data, self()},
 			receive
-				{input,Input} ->	
-					wait_for_slot(LastSlot),
+				{input,{value, Input}} ->	
+					wait_for_slot(NextSlot),
 					Packet = create_packet(Input, NextSlot),
 					gen_udp:send(Socket,Ip,Packet),
 					loop(State#state{lastSlot=NextSlot})
@@ -32,4 +32,4 @@ create_packet(Input,NextSlot) ->
 
 	
 wait_for_slot(Slot)->
-	timer:sleep(Slot*50 +25 -(utilities:get_timestamp() rem 1000)).
+	timer:sleep(Slot*50 +25 -((utilities:get_timestamp() div 1000) rem 1000)).
