@@ -4,7 +4,9 @@
 
 init(TeamNo,StationNo,MulticastIp)->
     Port=TeamNo+15000,
-	{ok,Socket}=gen_udp:open(Port),
+	Addr = {225,10,1,2},
+	LAddr = {192,168,56,1},
+	{ok,Socket}=gen_udp:open(Port, [binary, {ip, Addr}, {add_membership, {Addr, LAddr}}]),
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,Socket) end),
     Sender=spawn(fun()->sender:init(Coordinator,Socket,MulticastIp) end),
