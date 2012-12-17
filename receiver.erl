@@ -1,4 +1,3 @@
-
 -module(receiver).
 -compile(export_all).
 -record(state,{socket,coordinator,lastFrame}).
@@ -15,7 +14,7 @@ loop(State=#state{socket=Socket,coordinator=Coordinator,lastFrame=LastFrame})->
 	    Time=utilities:get_timestamp(),
 	    Slot=utilities:get_slot_for_msec(Time),
 	    Coordinator ! {received,Slot,Time,Packet},
-		loop(State#state{lastFrame=CurrentFrame);
+		loop(State#state{lastFrame=CurrentFrame});
 	kill -> 
 	    io:format("Received kill command"),
 	    gen_udp:close(Socket),
