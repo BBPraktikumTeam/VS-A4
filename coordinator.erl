@@ -14,7 +14,7 @@ init(TeamNo,StationNo,MulticastIp)->
 	timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
     loop(#state{teamNo=TeamNo,stationNo=StationNo,socket=Socket,currentSlot=(random:uniform(20)-1),receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
 
-loop(State=#state{slotWishes = SlotWishes, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
+loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
 		reset_slot_wishes ->
 			timer:send_after(1000,self(),reset_slot_wishes), %% reset slot wishes every second/frame
@@ -22,10 +22,10 @@ loop(State=#state{slotWishes = SlotWishes, stationNo = StationNo, sender = Sende
 				OwnPacketCollided ->
 					Slot = calculate_slot_from_slotwishes(SlotWishes);
 				true ->
-					Slot = currentSlot
+					Slot = CurrentSlot
 			end,
 			Sender ! {slot, Slot},
-			loop(State#state{slotWishes=dict:new()});
+			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot}});
 		{received,Slot,Time,Packet} ->
 			IsCollision = lists:member(Slot, UsedSlots),
 			if
