@@ -1,4 +1,3 @@
-
 -module(receiver).
 -compile(export_all).
 -record(state,{socket,coordinator,lastFrame}).
