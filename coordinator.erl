@@ -2,11 +2,12 @@
 -compile(export_all).
 -record(state,{teamNo,stationNo,socket,currentSlot,receiver,sender,slotWishes, usedSlots, ownPacketCollided}).
 
-init(TeamNo,StationNo,MulticastIp)->
+start([TeamNo,StationNo,MulticastIp,LocalIp])->
+    init(list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),atom_to_list(MulticastIp),atom_to_list(LocalIp)).
+
+init(TeamNo,StationNo,MulticastIp,LocalIp)->
     Port=TeamNo+15000,
-	Addr = {225,10,1,2},
-	LAddr = {192,168,56,1},
-	{ok,Socket}=gen_udp:open(Port, [binary, {ip, Addr}, {add_membership, {Addr, LAddr}}]),
+	{ok,Socket}=gen_udp:open(Port, [binary, {ip, LocalIp}, {add_membership, {MulticastIp, LocalIp}}]),
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,Socket) end),
     Sender=spawn(fun()->sender:init(Coordinator,Socket,MulticastIp) end),
@@ -25,7 +26,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 					Slot = CurrentSlot
 			end,
 			Sender ! {slot, Slot},
-			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot}});
+			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
 		{received,Slot,Time,Packet} ->
 			IsCollision = lists:member(Slot, UsedSlots),
 			if
