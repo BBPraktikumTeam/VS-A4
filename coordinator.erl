@@ -3,11 +3,14 @@
 -record(state,{teamNo,stationNo,socket,currentSlot,receiver,sender,slotWishes, usedSlots, ownPacketCollided}).
 
 start([TeamNo,StationNo,MulticastIp,LocalIp])->
-    init(list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),atom_to_list(MulticastIp),atom_to_list(LocalIp)).
+    {ok,MulticastIpTuple}=inet_parse:address(atom_to_list(MulticastIp)),
+    {ok,LocalIpTuple}=inet_parse:address(atom_to_list(LocalIp)),
+    init(list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),MulticastIpTuple,LocalIpTuple).
 
 init(TeamNo,StationNo,MulticastIp,LocalIp)->
     Port=TeamNo+15000,
 	{ok,Socket}=gen_udp:open(Port, [binary, {ip, LocalIp}, {add_membership, {MulticastIp, LocalIp}}]),
+    io:format("Socket running on: ~p~n",[Port]),
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,Socket) end),
     Sender=spawn(fun()->sender:init(Coordinator,Socket,MulticastIp) end),
