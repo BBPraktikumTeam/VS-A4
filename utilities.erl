@@ -4,7 +4,7 @@
 % gets a timestamp in ms from the epoch
 get_timestamp() ->
     {Mega,Sec,Micro} = erlang:now(),
-    (Mega*1000000+Sec)*1000000+Micro.
+    ((Mega*1000000+Sec)*1000000+Micro) div 1000.
 
 get_slot_for_msec(Time)->
     erlang:trunc(((Time rem 1000)/50)).
