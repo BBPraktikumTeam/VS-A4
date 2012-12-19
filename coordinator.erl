@@ -21,7 +21,8 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
     gen_udp:controlling_process(SendSocket,Sender),
     timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
     timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
-    loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=(random:uniform_s(20,now())-1),receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
+    {FirstSlot,_}=(random:uniform_s(20,now())),
+    loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=FirstSlot-1,receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
 
 loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
@@ -78,4 +79,5 @@ update_slot_wishes(Packet,SlotWishes)->
 calculate_slot_from_slotwishes(SlotWishes) ->
 	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
-	lists:nth(random:uniform_s(length(FreeSlots),now()), FreeSlots).
+	{NthSlotList,_}=random:uniform_s(length(FreeSlots),now()),
+	lists:nth(NthSlotList, FreeSlots).
