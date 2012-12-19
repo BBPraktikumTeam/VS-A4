@@ -19,3 +19,15 @@ match_message(_Packet= <<_Rest:8/binary,StationBin:2/binary,NutzdatenBin:14/bina
 	Timestamp=TimestampBin,
 	Nutzdaten= binary_to_list(NutzdatenBin),
 	{Station,Slot,Nutzdaten,Timestamp}.
+
+match_message_for_to_string(_Packet= <<PrefixBin:10/binary,NutzdatenBin:14/binary,SlotBin:8/integer,TimestampBin:64/integer>>)	->
+	Prefix = binary_to_list(PrefixBin),
+    	Slot=SlotBin,
+	Timestamp=TimestampBin,
+	Nutzdaten= binary_to_list(NutzdatenBin),
+	{Prefix,Slot,Nutzdaten,Timestamp}.
+
+message_to_string(Packet) ->
+	{Prefix,Slot,Nutzdaten,Timestamp} = match_message_for_to_string(Packet),
+	[Prefix,Slot,Nutzdaten,Timestamp].
+	

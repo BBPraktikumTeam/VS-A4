@@ -39,7 +39,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			Sender ! {slot, Slot},
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
 		{received,Slot,Time,Packet} ->
-			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,Packet]),
+			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
 			IsCollision = ((lists:member(Slot, UsedSlots)) or (Slot == CurrentSlot)),
 			if
 				IsCollision ->
@@ -81,5 +81,5 @@ calculate_slot_from_slotwishes(SlotWishes) ->
 	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
 	{NthSlotList,_}=random:uniform_s(length(FreeSlots),now()),
-	io:format("Choosing Slot ~p from ~p~n",[NthSlotList, FreeSlots]),erl
+	io:format("Choosing Slot ~p from ~p~n",[NthSlotList, FreeSlots]),
 	lists:nth(NthSlotList, FreeSlots).
