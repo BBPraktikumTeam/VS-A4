@@ -80,4 +80,5 @@ calculate_slot_from_slotwishes(SlotWishes) ->
 	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
 	{NthSlotList,_}=random:uniform_s(length(FreeSlots),now()),
+	io:format("Choosing Slot ~p from ~p~n",[NthSlotList, FreeSlots]),
 	lists:nth(NthSlotList, FreeSlots).
