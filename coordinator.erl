@@ -24,7 +24,7 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
 loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
 		reset_slot_wishes ->
-			timer:send_after(1000,self(),reset_slot_wishes), %% reset slot wishes every second/frame
+			timer:send_after(1000 - (utilities:get_timestamp() rem 1000),self(),reset_slot_wishes), %% reset slot wishes every second/frame
 			if
 				OwnPacketCollided ->
 					Slot = calculate_slot_from_slotwishes(SlotWishes);
