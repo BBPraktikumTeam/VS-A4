@@ -1,26 +1,24 @@
 -module(receiver).
 -compile(export_all).
--record(state,{socket,coordinator,lastFrame}).
+-record(state,{socket,coordinator}).
 
 init(Coordinator,Socket)->
-    
-	CurrentFrame=utilities:get_current_frame(),
 	gen_udp:controlling_process(Socket, self()),
-    loop(#state{socket=Socket,coordinator=Coordinator,lastFrame=CurrentFrame}).
+    loop(#state{socket=Socket,coordinator=Coordinator}).
 
-loop(State=#state{socket=Socket,coordinator=Coordinator,lastFrame=LastFrame})->
+loop(State=#state{socket=Socket,coordinator=Coordinator})->
     receive
-	{udp, Socket, _IP, _InPortNo, Packet} -> 
-		CurrentFrame=utilities:get_current_frame(),
+	{udp, _ReceiveSocket, _IP, _InPortNo, Packet} -> 
 	    Time=utilities:get_timestamp(),
 	    Slot=utilities:get_slot_for_msec(Time),
 	    Coordinator ! {received,Slot,Time,Packet},
-		loop(State#state{lastFrame=CurrentFrame});
+		loop(State);
 	kill -> 
 	    io:format("Received kill command"),
 	    gen_udp:close(Socket),
 	    exit(normal);
-	Any -> io:format("Received garbage: ~p~n",[Any])
+	Any -> io:format("receiver: Received garbage: ~p~n",[Any]),
+	    loop(State)
     end.
 
 
