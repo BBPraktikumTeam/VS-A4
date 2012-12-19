@@ -16,7 +16,9 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
     io:format("ReceiveSocket running on: ~p~n",[ReceivePort]),
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,ReceiveSocket) end),
+    gen_udp:controlling_process(ReceiveSocket,Receiver),
     Sender=spawn(fun()->sender:init(SendSocket,MulticastIp,ReceivePort) end),
+    gen_udp:controlling_process(SendSocket,Sender),
     timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
     timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
     loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=(random:uniform(20)-1),receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
@@ -24,6 +26,7 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
 loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
 		reset_slot_wishes ->
+			io:format("coordinator: reset_slot_wishes"),
 			timer:send_after(1000 - (utilities:get_timestamp() rem 1000),self(),reset_slot_wishes), %% reset slot wishes every second/frame
 			if
 				OwnPacketCollided ->
@@ -33,17 +36,19 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			end,
 			Sender ! {slot, Slot},
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
-		{received,Slot,_Time,Packet} ->
-			IsCollision = lists:member(Slot, UsedSlots),
+		{received,Slot,Time,Packet} ->
+			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,Packet]),
+			IsCollision = ((lists:member(Slot, UsedSlots)) or (Slot == CurrentSlot)),
 			if
 				IsCollision ->
-					io:format("Collision detected in Slot ~p~n",[Slot]),
+					io:format("coordinator: Collision detected in Slot ~p~n",[Slot]),
 					SlotWishesNew = update_slot_wishes(Packet, SlotWishes),
-					CollidedStations = dict:fetch(Slot, SlotWishesNew),
-					OwnStationInvolved = lists:member(StationNo, CollidedStations),
+					%%CollidedStations = dict:fetch(Slot, SlotWishesNew),
+					OwnStationInvolved = Slot == CurrentSlot,
 					if
-						OwnStationInvolved ->		
-							loop(State#state{slotWishes=SlotWishesNew, ownPacketCollided = true});
+						OwnStationInvolved ->	
+							SlotWishesWithOwn = dict:append(Slot, StationNo, SlotWishesNew),	
+							loop(State#state{slotWishes=SlotWishesWithOwn, ownPacketCollided = true});
 						true ->
 							loop(State#state{slotWishes=SlotWishesNew})
 					end;
@@ -57,7 +62,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			Receiver ! kill,
 			Sender ! kill,
 			exit(normal);
-		Any -> io:format("Received garbage: ~p~n",[Any]),
+		Any -> io:format("coordinator: Received garbage: ~p~n",[Any]),
 			loop(State#state{})
     end.
 
