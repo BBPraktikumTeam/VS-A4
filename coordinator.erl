@@ -35,11 +35,10 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			if
 				IsCollision ->
 					io:format("Collision detected in Slot ~p~n",[Slot]),
-					%% other packets received on that slot can't be evaluated, therefore their slotWishes were invalid
-					SlotWishesNew=dict:erase(Slot, SlotWishes),
+					OtherStations = dict:fetch(Slot, SlotWishes),
 					{Station, _, _, _} = utilities:match_message(Packet),
 					if
-						Station == StationNo ->		%% funktioniert das so oder enthält "Station" auch noch die TeamNo?
+						Station == StationNo or lists:member(StationNo, OtherStations) ->		
 							loop(State#state{slotWishes=SlotWishesNew, ownPacketCollided = true});
 						true ->
 							loop(State#state{slotWishes=SlotWishesNew})
@@ -68,5 +67,6 @@ update_slot_wishes(Packet,SlotWishes)->
 
 			   
 calculate_slot_from_slotwishes(SlotWishes) ->
+	ValidSlotWishes = dict:filter((K,V) -> (length(V) == 1), SlotWishes),		%%remove collisions
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(SlotWishes)),
 	lists:nth(random:uniform(length(FreeSlots)), FreeSlots).
