@@ -38,10 +38,15 @@ create_packet(Input,NextSlot) ->
 	
 wait_for_slot(Slot)->
 	NextSlotTime = Slot*50 +25,
-	CurrentTimeInMs = utilities:get_timestamp() div 1000,
-	TimeToWait = NextSlotTime - (CurrentTimeInMs rem 1000),
+	CurrentTimeInMs = utilities:get_timestamp(),
 	io:format("sender: next slot time: ~p~n",[NextSlotTime]),
 	io:format("sender: current time in ms: ~p~n",[CurrentTimeInMs]),
-	io:format("sender: time to wait: ~p~n",[TimeToWait]),
-	timer:sleep(TimeToWait).
+	case NextSlotTime - (CurrentTimeInMs rem 1000) of
+		TimeToWait when TimeToWait > 0 -> 
+			io:format("sender: time to wait: ~p~n",[TimeToWait]),
+			timer:sleep(TimeToWait);
+		_TimeToWait -> 
+			io:format("sender: no time to wait~n"),
+			ok
+	end.
 %	timer:sleep(Slot*50 +25 -((utilities:get_timestamp() div 1000) rem 1000)).
