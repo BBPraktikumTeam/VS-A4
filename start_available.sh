@@ -7,7 +7,6 @@ for i in `nmap -sP 172.16.1.2-18 | grep "appears to be up"`
 do
   if [[ $i =~ ^[[:digit:]] ]]
   then
-    HOST_NO=${HOSTNAME#lab}
-    ./start_all.sh $HOST_NO
+    ./start_all.sh $i
   fi
 done
