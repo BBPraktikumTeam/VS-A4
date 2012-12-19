@@ -18,10 +18,12 @@ read(Pid)->
 loop(State=#state{queue=Queue})->
 	receive
 		{input,Input} -> 
+			io:format("dataqueue: add new data: ~p~n",[Input]),
 			      NewQueue=queue:in(Input,Queue),
 			      loop(State#state{queue=NewQueue});
 		{get_data,Pid} -> 
 			 {Item,NewQueue}=queue:out(Queue),
+			io:format("dataqueue: fetch item: ~p~n",[Item]),
 			 Pid ! {input,Item},
 			 loop(State#state{queue=NewQueue})
 	end.
