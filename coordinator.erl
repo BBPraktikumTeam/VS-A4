@@ -35,10 +35,11 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			if
 				IsCollision ->
 					io:format("Collision detected in Slot ~p~n",[Slot]),
-					OtherStations = dict:fetch(Slot, SlotWishes),
-					{Station, _, _, _} = utilities:match_message(Packet),
+					SlotWishesNew = update_slot_wishes(Packet, SlotWishes),
+					CollidedStations = dict:fetch(Slot, SlotWishesNew),
+					OwnStationInvolved = lists:member(StationNo, CollidedStations),
 					if
-						Station == StationNo or lists:member(StationNo, OtherStations) ->		
+						OwnStationInvolved ->		
 							loop(State#state{slotWishes=SlotWishesNew, ownPacketCollided = true});
 						true ->
 							loop(State#state{slotWishes=SlotWishesNew})
@@ -67,6 +68,6 @@ update_slot_wishes(Packet,SlotWishes)->
 
 			   
 calculate_slot_from_slotwishes(SlotWishes) ->
-	ValidSlotWishes = dict:filter((K,V) -> (length(V) == 1), SlotWishes),		%%remove collisions
-	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(SlotWishes)),
+	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
+	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
 	lists:nth(random:uniform(length(FreeSlots)), FreeSlots).
