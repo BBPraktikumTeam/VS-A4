@@ -1,6 +1,6 @@
 -module(coordinator).
 -compile(export_all).
--record(state,{teamNo,stationNo,socket,currentSlot,receiver,sender,slotWishes, usedSlots, ownPacketCollided}).
+-record(state,{teamNo,stationNo,currentSlot,receiver,sender,slotWishes, usedSlots, ownPacketCollided}).
 
 start([TeamNo,StationNo,MulticastIp,LocalIp])->
     {ok,MulticastIpTuple}=inet_parse:address(atom_to_list(MulticastIp)),
@@ -8,15 +8,18 @@ start([TeamNo,StationNo,MulticastIp,LocalIp])->
     init(list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),MulticastIpTuple,LocalIpTuple).
 
 init(TeamNo,StationNo,MulticastIp,LocalIp)->
-    Port=TeamNo+15000,
-	{ok,Socket}=gen_udp:open(Port, [binary, {ip, LocalIp}, {add_membership, {MulticastIp, LocalIp}}]),
-    io:format("Socket running on: ~p~n",[Port]),
+    ReceivePort=TeamNo+15000,
+    SendPort=TeamNo+14000,
+    {ok,ReceiveSocket}=gen_udp:open(ReceivePort, [binary, {active, true}, {multicast_if, LocalIp}, inet, {multicast_loop, false}, {add_membership, {MulticastIp,LocalIp}}]),
+    {ok,SendSocket}=gen_udp:open(SendPort, [binary, {active, true}, {ip, LocalIp}, inet, {multicast_loop, false}, {multicast_if, LocalIp}]),
+    io:format("SendSocket running on: ~p~n",[SendPort]),
+    io:format("ReceiveSocket running on: ~p~n",[ReceivePort]),
     Coordinator=self(),
-    Receiver=spawn(fun()->receiver:init(Coordinator,Socket) end),
-    Sender=spawn(fun()->sender:init(Coordinator,Socket,MulticastIp) end),
-	timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
-	timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
-    loop(#state{teamNo=TeamNo,stationNo=StationNo,socket=Socket,currentSlot=(random:uniform(20)-1),receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
+    Receiver=spawn(fun()->receiver:init(Coordinator,ReceiveSocket) end),
+    Sender=spawn(fun()->sender:init(SendSocket,MulticastIp,ReceivePort) end),
+    timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
+    timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
+    loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=(random:uniform(20)-1),receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
 
 loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
@@ -30,7 +33,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			end,
 			Sender ! {slot, Slot},
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
-		{received,Slot,Time,Packet} ->
+		{received,Slot,_Time,Packet} ->
 			IsCollision = lists:member(Slot, UsedSlots),
 			if
 				IsCollision ->
