@@ -27,10 +27,11 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
 loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided})->
     receive
 		reset_slot_wishes ->
-			io:format("coordinator: reset_slot_wishes"),
+			io:format("coordinator: reset_slot_wishes~n"),
 			timer:send_after(1000 - (utilities:get_timestamp() rem 1000),self(),reset_slot_wishes), %% reset slot wishes every second/frame
 			if
 				OwnPacketCollided ->
+					
 					Slot = calculate_slot_from_slotwishes(SlotWishes);
 				true ->
 					Slot = CurrentSlot
@@ -80,5 +81,5 @@ calculate_slot_from_slotwishes(SlotWishes) ->
 	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
 	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
 	{NthSlotList,_}=random:uniform_s(length(FreeSlots),now()),
-	io:format("Choosing Slot ~p from ~p~n",[NthSlotList, FreeSlots]),
+	io:format("Choosing Slot ~p from ~p~n",[NthSlotList, FreeSlots]),erl
 	lists:nth(NthSlotList, FreeSlots).
