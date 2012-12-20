@@ -1,7 +1,0 @@
-#!/bin/bash
-USERNAME=$1
-shift
-for host in "$@"
-do
-    ssh $USERNAME@$host -o BatchMode=yes "cd /home/stud6/$USERNAME/workspace/VS-A4/; kill `cat $host.pid`; rm $host.pid"
-done
