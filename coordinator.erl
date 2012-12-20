@@ -2,13 +2,13 @@
 -compile(export_all).
 -record(state,{teamNo,stationNo,currentSlot,receiver,sender,slotWishes, usedSlots, ownPacketCollided}).
 
-start([TeamNo,StationNo,MulticastIp,LocalIp])->
+start([Port,TeamNo,StationNo,MulticastIp,LocalIp])->
     {ok,MulticastIpTuple}=inet_parse:address(atom_to_list(MulticastIp)),
     {ok,LocalIpTuple}=inet_parse:address(atom_to_list(LocalIp)),
-    init(list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),MulticastIpTuple,LocalIpTuple).
+    init(list_to_integer(atom_to_list(Port)),list_to_integer(atom_to_list(TeamNo)),list_to_integer(atom_to_list(StationNo)),MulticastIpTuple,LocalIpTuple).
 
-init(TeamNo,StationNo,MulticastIp,LocalIp)->
-    ReceivePort=TeamNo+15000,
+init(Port,TeamNo,StationNo,MulticastIp,LocalIp)->
+    ReceivePort=Port,
     SendPort=TeamNo+14000,
     {ok,ReceiveSocket}=gen_udp:open(ReceivePort, [binary, {active, true}, {multicast_if, LocalIp}, inet, {multicast_loop, false}, {add_membership, {MulticastIp,LocalIp}}]),
     {ok,SendSocket}=gen_udp:open(SendPort, [binary, {active, true}, {ip, LocalIp}, inet, {multicast_loop, false}, {multicast_if, LocalIp}]),
