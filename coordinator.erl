@@ -37,7 +37,9 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 				true ->
 					Slot = CurrentSlot
 			end,
+			io:format("coordinator: send to sender"),
 			Sender ! {slot, Slot},
+			io:format("coordinator: snet to sender"),
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
 		{received,Slot,Time,Packet} ->
 			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
