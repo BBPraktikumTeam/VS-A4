@@ -63,11 +63,14 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			end;
 		{validate_slot, Slot} ->
 			IsValid = not dict:is_key(Slot, SlotWishes),
+			io:format("coordinator: try to validate slot"),
 			if 
 				IsValid ->
+					io:format("coordinator: slot is valid"),
 					Sender ! ok,
 					loop(State);
 				true ->
+					io:format("coordinator: slot was invalid, calculate new"),
 					NewSlot = calculate_slot_from_slotwishes(SlotWishes),
 					Sender ! {new_slot, NewSlot},
 					loop(State#state{currentSlot = NewSlot})

@@ -19,11 +19,14 @@ loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port
 			receive
 				{input,{value, Input}} ->	
 					wait_for_slot(NextSlot),
+					io:format("sender: sending to coordinator~n"),
 					Coordinator ! {validate_slot, NextSlot},
 					receive
 						ok ->
+							io:format("sender: slot is valid~n"),
 							Packet = create_packet(Input, NextSlot);
 						{new_slot, Slot} ->
+							io:format("sender: slot was invalid, new slot: ~p~n", [Slot]),
 							Packet = create_packet(Input, Slot)
 					end,
 					io:format("sender: packet ready to send: ~p~n",[Packet]),		
