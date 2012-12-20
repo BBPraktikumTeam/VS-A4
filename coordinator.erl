@@ -61,6 +61,17 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 					UsedSlotsNew = lists:append([Slot], UsedSlots),
 					loop(State#state{slotWishes=SlotWishesNew, usedSlots=UsedSlotsNew})
 			end;
+		{validate_slot, Slot} ->
+			IsValid = not dict:is_key(Slot, SlotWishes),
+			if 
+				IsValid ->
+					Sender ! ok,
+					loop(State);
+				true ->
+					NewSlot = calculate_slot_from_slotwishes(SlotWishes),
+					Sender ! {new_slot, NewSlot},
+					loop(State#state{currentSlot = NewSlot})
+			end;
 		kill -> 
 			io:format("Received kill command"),
 			Receiver ! kill,
