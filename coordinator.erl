@@ -37,9 +37,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 				true ->
 					Slot = CurrentSlot
 			end,
-			io:format("coordinator: send to sender"),
 			Sender ! {slot, Slot},
-			io:format("coordinator: snet to sender"),
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
 		{received,Slot,Time,Packet} ->
 			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
@@ -62,20 +60,6 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 					SlotWishesNew=update_slot_wishes(Packet,SlotWishes),
 					UsedSlotsNew = lists:append([Slot], UsedSlots),
 					loop(State#state{slotWishes=SlotWishesNew, usedSlots=UsedSlotsNew})
-			end;
-		{validate_slot, Slot} ->
-			IsValid = not dict:is_key(Slot, SlotWishes),
-			io:format("coordinator: try to validate slot"),
-			if 
-				IsValid ->
-					io:format("coordinator: slot is valid"),
-					Sender ! ok,
-					loop(State);
-				true ->
-					io:format("coordinator: slot was invalid, calculate new"),
-					NewSlot = calculate_slot_from_slotwishes(SlotWishes),
-					Sender ! {new_slot, NewSlot},
-					loop(State#state{currentSlot = NewSlot})
 			end;
 		kill -> 
 			io:format("Received kill command"),
