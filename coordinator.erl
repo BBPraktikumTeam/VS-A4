@@ -21,7 +21,7 @@ init(TeamNo,StationNo,MulticastIp,LocalIp)->
     gen_udp:controlling_process(SendSocket,Sender),
     timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
 	self() ! reset_slot_wishes,
-    timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
+    %%timer:send_after(1000,self(),reset_slot_wishes), %% set the first timer that calls to reset the slot wishes dict every second
     {FirstSlot,_}=(random:uniform_s(20,now())),
     loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=FirstSlot-1,receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false}).
 
