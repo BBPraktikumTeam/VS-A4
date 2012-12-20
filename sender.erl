@@ -22,7 +22,7 @@ loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port
 					io:format("sender: sending to coordinator~n"),
 					Coordinator ! {validate_slot, NextSlot},
 					receive
-						ok ->
+						slot_ok ->
 							io:format("sender: slot is valid~n"),
 							Packet = create_packet(Input, NextSlot);
 						{new_slot, Slot} ->

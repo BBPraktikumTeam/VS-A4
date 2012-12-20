@@ -69,7 +69,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 			if 
 				IsValid ->
 					io:format("coordinator: slot is valid"),
-					Sender ! ok,
+					Sender ! slot_ok,
 					loop(State);
 				true ->
 					io:format("coordinator: slot was invalid, calculate new"),
