@@ -17,7 +17,7 @@ init(Port,TeamNo,StationNo,MulticastIp,LocalIp)->
     Coordinator=self(),
     Receiver=spawn(fun()->receiver:init(Coordinator,ReceiveSocket) end),
     gen_udp:controlling_process(ReceiveSocket,Receiver),
-    Sender=spawn(fun()->sender:init(SendSocket,MulticastIp,ReceivePort, self()) end),
+    Sender=spawn(fun()->sender:init(SendSocket,MulticastIp,ReceivePort, Coordinator) end),
     gen_udp:controlling_process(SendSocket,Sender),
     timer:sleep(1000 - (utilities:get_timestamp() rem 1000)), %% wait for first slot / first full second
 	self() ! reset_slot_wishes,
@@ -37,9 +37,7 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 				true ->
 					Slot = CurrentSlot
 			end,
-			io:format("coordinator: send to sender"),
 			Sender ! {slot, Slot},
-			io:format("coordinator: sent to sender"),
 			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot});
 		{received,Slot,Time,Packet} ->
 			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
@@ -64,16 +62,17 @@ loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo 
 					loop(State#state{slotWishes=SlotWishesNew, usedSlots=UsedSlotsNew})
 			end;
 		{validate_slot, Slot} ->
+			io:format("coordinator: try to validate slot~n"),
 			IsValid = not dict:is_key(Slot, SlotWishes),
-			io:format("coordinator: try to validate slot"),
+			
 			if 
 				IsValid ->
-					io:format("coordinator: slot is valid"),
+					io:format("coordinator: slot is valid~n"),
 					Sender ! slot_ok,
 					loop(State);
 				true ->
-					io:format("coordinator: slot was invalid, calculate new"),
 					NewSlot = calculate_slot_from_slotwishes(SlotWishes),
+					io:format("coordinator: slot was invalid, new slot: ~p~n", [NewSlot]),
 					Sender ! {new_slot, NewSlot},
 					loop(State#state{currentSlot = NewSlot})
 			end;
