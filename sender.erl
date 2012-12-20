@@ -1,17 +1,17 @@
 -module(sender).
 -compile(export_all).
 
--record(state,{dataqueue, socket, ip, port}).
+-record(state,{dataqueue, socket, ip, port, coordinator}).
 
 
 
-init(Socket, Ip, Port) ->
+init(Socket, Ip, Port, Coordinator) ->
 	Dataqueue = spawn(fun()-> dataqueue:start() end),
-	loop(#state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port}).
+	loop(#state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port, coordinator = Coordinator}).
 
 %% Koordinator nicht benutzt
 %% Last Slot wird nicht gebraucht, da wir immer den neuen Slot vom Koordinator bekommen.
-loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port}) ->
+loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port, coordinator = Coordinator}) ->
 	receive
 		{slot, NextSlot} ->
 			io:format("sender: next slot: ~p~n",[NextSlot]),
@@ -19,8 +19,14 @@ loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port
 			receive
 				{input,{value, Input}} ->	
 					wait_for_slot(NextSlot),
-					Packet = create_packet(Input, NextSlot),
-					io:format("sender: packet ready to send: ~p~n",[Packet]),
+					Coordinator ! {validate_slot, NextSlot},
+					receive
+						ok ->
+							Packet = create_packet(Input, NextSlot);
+						{new_slot, Slot} ->
+							Packet = create_packet(Input, Slot)
+					end,
+					io:format("sender: packet ready to send: ~p~n",[Packet]),		
 					gen_udp:send(Socket,Ip,Port,Packet),
 					loop(State);
 				{input, empty} ->
@@ -37,7 +43,7 @@ create_packet(Input,NextSlot) ->
 
 	
 wait_for_slot(Slot)->
-	NextSlotTime = Slot*50 +25,
+	NextSlotTime = Slot*50 +10,
 	CurrentTimeInMs = utilities:get_timestamp(),
 	io:format("sender: next slot time: ~p~n",[NextSlotTime]),
 	io:format("sender: current time in ms: ~p~n",[CurrentTimeInMs]),
