@@ -27,68 +27,79 @@ init(Port,TeamNo,StationNo,MulticastIp,LocalIp)->
     {FirstSlot,_}=(random:uniform_s(20,now())),
     loop(#state{teamNo=TeamNo,stationNo=StationNo,currentSlot=FirstSlot-1,receiver=Receiver,sender=Sender,slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, slotAlreadyChosen =false}).
 
-loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided, slotAlreadyChosen = SlotAlreadyChosen})->
+loop(State=#state{slotWishes = SlotWishes, currentSlot = CurrentSlot, teamNo=TeamNo, stationNo = StationNo, sender = Sender,receiver=Receiver, usedSlots = UsedSlots, ownPacketCollided = OwnPacketCollided, slotAlreadyChosen = SlotAlreadyChosen})->
     receive
-		reset_slot_wishes ->
-			io:format("coordinator: reset_slot_wishes~n"),
-			timer:send_after(1000 - (utilities:get_timestamp() rem 1000),self(),reset_slot_wishes), %% reset slot wishes every second/frame
-			if
-				OwnPacketCollided and not SlotAlreadyChosen ->
-					
-					Slot = calculate_slot_from_slotwishes(SlotWishes);
+	reset_slot_wishes ->
+	    io:format("coordinator: reset_slot_wishes~n"),
+	    timer:send_after(1000 - (utilities:get_timestamp() rem 1000),self(),reset_slot_wishes), %% reset slot wishes every second/frame
+	    if
+		OwnPacketCollided and not SlotAlreadyChosen ->
+		    case calculate_slot_from_slotwishes(SlotWishes) of
+			{error, _Message} -> Slot=CurrentSlot;
+			{ok, NewSlot} -> Slot=NewSlot
+		    end;
+		true ->
+		    Slot = CurrentSlot
+	    end,
+	    Sender ! {slot, {CurrentSlot,Slot}},
+	    loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot, slotAlreadyChosen =false});
+	{received,Slot,Time,Packet} ->
+	    io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
+	    case utilities:match_message(Packet) of
+		{TeamNo,StationNo,_,_,_} -> 
+		    io:format("coordinator: Received message from myself -> ignoring it.~n"),
+		    loop(State);
+		_Any -> 
+		    IsCollision = ((lists:member(Slot, UsedSlots)) or (Slot == CurrentSlot)),
+		    if
+			IsCollision ->
+			    SlotWishesNew = update_slot_wishes(Packet, SlotWishes),
+			    %%CollidedStations = dict:fetch(Slot, SlotWishesNew),
+			    OwnStationInvolved = Slot == CurrentSlot,
+			    if
+				OwnStationInvolved ->	
+				    io:format("coordinator: Collision detected in Slot ~p, own packet involved~n",[Slot]),
+				    SlotWishesWithOwn = dict:append(Slot, StationNo, SlotWishesNew),	
+				    loop(State#state{slotWishes=SlotWishesWithOwn, ownPacketCollided = true});
 				true ->
-					Slot = CurrentSlot
-			end,
-			Sender ! {slot, {CurrentSlot,Slot}},
-			loop(State#state{slotWishes=dict:new(), usedSlots = [], ownPacketCollided = false, currentSlot = Slot, slotAlreadyChosen =false});
-		{received,Slot,Time,Packet} ->
-			io:format("coordinator: Received: slot:~p;time: ~p;packet: ~p~n",[Slot,Time,utilities:message_to_string(Packet)]),
-			IsCollision = ((lists:member(Slot, UsedSlots)) or (Slot == CurrentSlot)),
-			if
-				IsCollision ->
-					SlotWishesNew = update_slot_wishes(Packet, SlotWishes),
-					%%CollidedStations = dict:fetch(Slot, SlotWishesNew),
-					OwnStationInvolved = Slot == CurrentSlot,
-					if
-						OwnStationInvolved ->	
-							io:format("coordinator: Collision detected in Slot ~p, own packet involved~n",[Slot]),
-							SlotWishesWithOwn = dict:append(Slot, StationNo, SlotWishesNew),	
-							loop(State#state{slotWishes=SlotWishesWithOwn, ownPacketCollided = true});
-						true ->
-							io:format("coordinator: Collision detected in Slot ~p~n",[Slot]),
-							loop(State#state{slotWishes=SlotWishesNew})
-					end;
-				true ->
-					SlotWishesNew=update_slot_wishes(Packet,SlotWishes),
-					UsedSlotsNew = lists:append([Slot], UsedSlots),
-					loop(State#state{slotWishes=SlotWishesNew, usedSlots=UsedSlotsNew})
-			end;
-		{validate_slot, Slot} ->
-			io:format("coordinator: try to validate slot~n"),
-			IsValid = not dict:is_key(Slot, SlotWishes),
-			
-			if 
-				IsValid ->
-					io:format("coordinator: slot is valid~n"),
-					Sender ! slot_ok,
-					loop(State);
-				true ->
-					NewSlot = calculate_slot_from_slotwishes(SlotWishes),
-					io:format("coordinator: slot was invalid, new slot: ~p~n", [NewSlot]),
-					Sender ! {new_slot, NewSlot},
-					loop(State#state{currentSlot = NewSlot, slotAlreadyChosen =true})
-			end;
-		kill -> 
-			io:format("Received kill command"),
-			Receiver ! kill,
-			Sender ! kill,
-			exit(normal);
-		Any -> io:format("coordinator: Received garbage: ~p~n",[Any]),
-			loop(State#state{})
+				    io:format("coordinator: Collision detected in Slot ~p~n",[Slot]),
+				    loop(State#state{slotWishes=SlotWishesNew})
+			    end;
+			true ->
+			    SlotWishesNew=update_slot_wishes(Packet,SlotWishes),
+			    UsedSlotsNew = lists:append([Slot], UsedSlots),
+			    loop(State#state{slotWishes=SlotWishesNew, usedSlots=UsedSlotsNew})
+		    end
+	    end;
+	{validate_slot, Slot} ->
+	    io:format("coordinator: try to validate slot~n"),
+	    IsValid = not dict:is_key(Slot, SlotWishes),
+
+	    if 
+		IsValid ->
+		    io:format("coordinator: slot is valid~n"),
+		    Sender ! slot_ok,
+		    loop(State);
+		true ->
+		    case calculate_slot_from_slotwishes(SlotWishes) of
+			{error,_Message} -> Sender ! slot_ok;
+			{ok,NewSlot} ->
+			    io:format("coordinator: slot was invalid, new slot: ~p~n", [NewSlot]),
+			    Sender ! {new_slot, NewSlot},
+			    loop(State#state{currentSlot = NewSlot, slotAlreadyChosen =true})
+		    end
+	    end;
+	kill -> 
+	    io:format("Received kill command"),
+	    Receiver ! kill,
+	    Sender ! kill,
+	    exit(normal);
+	Any -> io:format("coordinator: Received garbage: ~p~n",[Any]),
+	       loop(State#state{})
     end.
 
 update_slot_wishes(Packet,SlotWishes)->
-    {Station,Slot,_,_} = utilities:match_message(Packet),
+    {_,Station,Slot,_,_} = utilities:match_message(Packet),
 	%% Appends the Clients to each SlotWish, so we can choose free slots afterwards
     dict:append(Slot,Station,SlotWishes).
     
@@ -97,8 +108,12 @@ update_slot_wishes(Packet,SlotWishes)->
 
 			   
 calculate_slot_from_slotwishes(SlotWishes) ->
-	ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
-	FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
-	{NthSlotList,_}=random:uniform_s(length(FreeSlots),now()),
-	io:format("Choosing Slot ~p from ~p~n",[lists:nth(NthSlotList,FreeSlots), FreeSlots]),
-	lists:nth(NthSlotList, FreeSlots).
+    ValidSlotWishes = dict:filter(fun(_,V) -> (length(V) == 1) end, SlotWishes),		%%remove collisions
+    FreeSlots = lists:subtract(lists:seq(0,19), dict:fetch_keys(ValidSlotWishes)),
+    case length(FreeSlots) of
+	0 -> {error, no_free_slots};
+	NoSlots ->
+	    {NthSlotList,_}=random:uniform_s(NoSlots,now()),
+	    io:format("Choosing Slot ~p from ~p~n",[lists:nth(NthSlotList,FreeSlots), FreeSlots]),
+	    {ok,lists:nth(NthSlotList, FreeSlots)}
+    end.

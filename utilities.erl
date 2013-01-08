@@ -13,19 +13,20 @@ get_current_frame()->
 	{_,CurrentFrame,_}=erlang:now(),
 	CurrentFrame.
 	
-match_message(_Packet= <<_Rest:8/binary,StationBin:2/binary,NutzdatenBin:14/binary,SlotBin:8/integer,TimestampBin:64/integer>>)	->
+match_message(_Packet= <<_Rest:5/binary,TeamNoBin:2/binary,_Dash:1/binary,StationBin:2/binary,NutzdatenBin:14/binary,SlotBin:8/integer,TimestampBin:64/integer>>)	->
 	Station=list_to_integer(binary_to_list(StationBin)),
+	TeamNo=list_to_integer(binary_to_list(TeamNoBin)),
     Slot=SlotBin,
 	Timestamp=TimestampBin,
 	Nutzdaten= binary_to_list(NutzdatenBin),
-	{Station,Slot,Nutzdaten,Timestamp}.
+	{TeamNo,Station,Slot,Nutzdaten,Timestamp}.
 
 match_message_for_to_string(_Packet= <<PrefixBin:10/binary,NutzdatenBin:14/binary,SlotBin:8/integer,TimestampBin:64/integer>>)	->
-	Prefix = binary_to_list(PrefixBin),
-    	Slot=SlotBin,
-	Timestamp=TimestampBin,
-	Nutzdaten= binary_to_list(NutzdatenBin),
-	{Prefix,Slot,Nutzdaten,Timestamp}.
+    Prefix = binary_to_list(PrefixBin),
+    Slot=SlotBin,
+    Timestamp=TimestampBin,
+    Nutzdaten= binary_to_list(NutzdatenBin),
+    {Prefix,Slot,Nutzdaten,Timestamp}.
 
 message_to_string(Packet) ->
 	{Prefix,Slot,Nutzdaten,Timestamp} = match_message_for_to_string(Packet),
