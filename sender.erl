@@ -13,12 +13,12 @@ init(Socket, Ip, Port, Coordinator) ->
 %% Last Slot wird nicht gebraucht, da wir immer den neuen Slot vom Koordinator bekommen.
 loop(State = #state{dataqueue = Dataqueue, socket = Socket, ip = Ip, port = Port, coordinator = Coordinator}) ->
 	receive
-		{slot, NextSlot} ->
+		{slot, {CurrentSlot,NextSlot}} ->
 			io:format("sender: next slot: ~p~n",[NextSlot]),
 			Dataqueue ! {get_data, self()},
 			receive
 				{input,{value, Input}} ->	
-					wait_for_slot(NextSlot),
+					wait_for_slot(CurrentSlot),
 					io:format("sender: sending to coordinator to validate slot~n"),
 					Coordinator ! {validate_slot, NextSlot},
 					receive
@@ -44,7 +44,7 @@ create_packet(Input,NextSlot) ->
 
 	
 wait_for_slot(Slot)->
-	NextSlotTime = Slot*50 +10,
+	NextSlotTime = Slot*50 +25,
 	CurrentTimeInMs = utilities:get_timestamp(),
 	io:format("sender: next slot time: ~p~n",[NextSlotTime]),
 	io:format("sender: current time in ms: ~p~n",[CurrentTimeInMs]),
