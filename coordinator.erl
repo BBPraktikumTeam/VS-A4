@@ -9,9 +9,11 @@ start([Port,TeamNo,StationNo,MulticastIp,LocalIp])->
 
 init(Port,TeamNo,StationNo,MulticastIp,LocalIp)->
     ReceivePort=Port,
-    SendPort=TeamNo+14000,
-    {ok,ReceiveSocket}=gen_udp:open(ReceivePort, [binary, {active, true}, {multicast_if, LocalIp}, inet, {multicast_loop, false}, {add_membership, {MulticastIp,LocalIp}}]),
-    {ok,SendSocket}=gen_udp:open(SendPort, [binary, {active, true}, {ip, LocalIp}, inet, {multicast_loop, false}, {multicast_if, LocalIp}]),
+    SendPort=StationNo+14000,
+    io:format("Starting Receive-Socket~n"),
+    {ok,ReceiveSocket}=gen_udp:open(ReceivePort, [binary, {active, true}, {multicast_if, LocalIp}, inet, {reuseaddr,true}, {multicast_loop, true}, {add_membership, {MulticastIp,LocalIp}}]),
+    io:format("Starting Send-Socket~n"),
+    {ok,SendSocket}=gen_udp:open(SendPort, [binary, {active, true}, {ip, LocalIp}, inet, {multicast_loop, true}, {multicast_if, LocalIp}]),
     io:format("SendSocket running on: ~p~n",[SendPort]),
     io:format("ReceiveSocket running on: ~p~n",[ReceivePort]),
     Coordinator=self(),

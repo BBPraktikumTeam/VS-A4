@@ -4,8 +4,6 @@
 
 start()->
 	Self=self(),
-	%% register only for testing!
-	register(dataqueue,Self),
 	spawn(fun()->read(Self) end),
 	loop(#state{queue=queue:new()}).
 
